@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mission Orion · BDLC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --space:#070B1A; --space-2:#0F1A3D; --ink:#E8ECF8; --muted:#8B95B8;
+    --line-dim:rgba(139,149,184,.18); --gold:#FFD27A;
+    --betelgeuse:#FF8C5A; --rigel:#BFE3FF; --nebula-a:#C84B8C; --nebula-b:#3FB0C9;
+    --good:#5BD6A0; --bad:#E2607A;
+    --display:"Space Grotesk",system-ui,sans-serif; --mono:"Space Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--display);color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% 120%, #131E47 0%, rgba(19,30,71,0) 55%),
+      radial-gradient(100% 70% at 50% -10%, #122 0%, rgba(0,0,0,0) 50%),
+      linear-gradient(180deg,#05081A 0%, #070B1A 40%, #0A1230 100%);
+    overflow:hidden;-webkit-font-smoothing:antialiased;
+  }
+  #sky{position:fixed;inset:0;overflow:hidden}
+
+  .bgstar{position:absolute;border-radius:50%;background:#fff;opacity:.5;animation:tw 4s ease-in-out infinite}
+  @keyframes tw{0%,100%{opacity:.15}50%{opacity:.8}}
+
+  .nebula{position:absolute;left:50%;top:64%;width:36vmin;height:36vmin;
+    transform:translate(-50%,-50%);pointer-events:none;border-radius:50%;
+    background:radial-gradient(circle at 40% 40%, rgba(200,75,140,.45), rgba(200,75,140,0) 60%),
+               radial-gradient(circle at 65% 60%, rgba(63,176,201,.35), rgba(63,176,201,0) 60%);
+    filter:blur(18px);opacity:.4;transition:opacity 1.2s ease, transform 1.2s ease}
+  body.complete .nebula{opacity:1;transform:translate(-50%,-50%) scale(1.28)}
+
+  #lines{position:absolute;inset:0;width:100%;height:100%}
+  #lines line{stroke:var(--line-dim);stroke-width:1;vector-effect:non-scaling-stroke;
+    transition:stroke .8s ease, filter .8s ease}
+  #lines line.lit{stroke:var(--gold);filter:drop-shadow(0 0 4px rgba(255,210,122,.9))}
+
+  .star{position:absolute;transform:translate(-50%,-50%);cursor:pointer;
+    -webkit-tap-highlight-color:transparent;border:0;background:none;padding:0}
+  .star.deco{pointer-events:none;cursor:default}
+  .star .dot{width:var(--s);height:var(--s);border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fff, var(--c) 60%, rgba(255,255,255,0) 72%);
+    opacity:.32;filter:saturate(.4) brightness(.7);
+    transition:opacity .6s ease, filter .6s ease, box-shadow .6s ease;box-shadow:0 0 0 rgba(0,0,0,0)}
+  .star.deco .dot{opacity:.18}
+  .star.lit .dot{opacity:1;filter:none;box-shadow:0 0 12px 2px var(--c), 0 0 30px 6px var(--c);
+    animation:pulse 3.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 12px 2px var(--c),0 0 26px 5px var(--c)}
+    50%{box-shadow:0 0 16px 3px var(--c),0 0 40px 9px var(--c)}}
+  .star .tag{position:absolute;left:50%;top:calc(50% + var(--s));transform:translate(-50%,6px);
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;white-space:nowrap;
+    color:var(--muted);opacity:.85;transition:color .4s ease}
+  .star.lit .tag{color:var(--ink)}
+  .star:focus-visible{outline:none}
+  .star:focus-visible .dot{box-shadow:0 0 0 3px var(--space),0 0 0 5px var(--gold)}
+  .star.q:not(.lit):hover .dot{opacity:.6;filter:saturate(.8) brightness(1)}
+  .star.q:not(.lit)::after{content:"";position:absolute;left:50%;top:50%;
+    width:calc(var(--s) + 18px);height:calc(var(--s) + 18px);transform:translate(-50%,-50%);
+    border-radius:50%;border:1px solid rgba(255,210,122,.35);animation:ring 2.4s ease-out infinite}
+  .star.q.lit::after{display:none}
+  @keyframes ring{0%{opacity:.5;transform:translate(-50%,-50%) scale(.7)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+
+  .hud{position:fixed;top:0;left:0;right:0;padding:18px 20px;display:flex;
+    justify-content:space-between;align-items:flex-start;gap:16px;z-index:5;pointer-events:none}
+  .hud .title{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+  .hud .title b{display:block;font-size:19px;letter-spacing:.12em;color:var(--ink);margin-top:3px;font-weight:600}
+  .progress{font-family:var(--mono);text-align:right;font-size:12px;color:var(--muted)}
+  .progress .count{font-size:26px;color:var(--gold);font-weight:700}
+  .pips{display:flex;gap:5px;justify-content:flex-end;margin-top:7px}
+  .pip{width:9px;height:9px;border-radius:50%;border:1px solid var(--line-dim);background:transparent;transition:.4s}
+  .pip.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 8px var(--gold)}
+
+  .hint{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:5;
+    font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em;
+    background:rgba(7,11,26,.55);padding:9px 16px;border-radius:99px;
+    border:1px solid var(--line-dim);backdrop-filter:blur(6px);transition:opacity .5s}
+
+  .scrim{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+    padding:24px;background:rgba(4,6,18,.72);backdrop-filter:blur(8px)}
+  .scrim.show{display:flex}
+  .card{width:100%;max-width:440px;background:linear-gradient(180deg,#0E1736,#0A1024);
+    border:1px solid rgba(139,149,184,.22);border-radius:20px;padding:28px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);animation:rise .35s cubic-bezier(.2,.8,.25,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent,var(--gold));display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .card h1{font-size:27px;font-weight:600;line-height:1.12;letter-spacing:.01em;margin-bottom:6px}
+  .card .lede{color:var(--muted);font-size:15px;line-height:1.5;margin-bottom:20px}
+  .card .prompt{font-size:16px;line-height:1.45;margin-bottom:18px}
+
+  .field{margin-bottom:13px}
+  .field label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;font-family:var(--display);font-size:15px;color:var(--ink);
+    background:rgba(139,149,184,.07);border:1px solid rgba(139,149,184,.22);border-radius:12px;
+    padding:13px 15px;transition:.18s}
+  .field input::placeholder{color:rgba(139,149,184,.55)}
+  .field input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,210,122,.25)}
+  .err{color:var(--bad);font-size:13px;margin-top:4px;min-height:18px;font-family:var(--mono)}
+
+  .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{text-align:left;font-family:var(--display);font-size:14.5px;line-height:1.4;color:var(--ink);
+    background:rgba(139,149,184,.06);border:1px solid rgba(139,149,184,.2);border-radius:12px;
+    padding:13px 15px;cursor:pointer;transition:.18s;display:flex;gap:11px;align-items:flex-start}
+  .opt .k{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:1px}
+  .opt:hover{border-color:rgba(255,210,122,.5);background:rgba(255,210,122,.06)}
+  .opt:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,210,122,.4)}
+  .opt.correct{border-color:var(--good);background:rgba(91,214,160,.12)}
+  .opt.wrong{border-color:var(--bad);background:rgba(226,96,122,.12)}
+  .opt:disabled{cursor:default}
+
+  .feedback{margin-top:18px;font-size:14px;line-height:1.5;color:var(--ink);
+    padding:14px 15px;border-radius:12px;background:rgba(139,149,184,.08);
+    border-left:3px solid var(--gold);display:none}
+  .feedback.show{display:block;animation:rise .3s ease}
+  .feedback b{color:var(--gold)}
+  .feedback b.no{color:var(--bad)}
+
+  .btn{margin-top:20px;width:100%;font-family:var(--display);font-weight:600;font-size:15px;
+    letter-spacing:.04em;color:#05081A;background:var(--gold);border:0;border-radius:12px;
+    padding:14px;cursor:pointer;transition:.18s}
+  .btn:hover{filter:brightness(1.07)}
+  .btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(255,210,122,.4)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line-dim);margin-top:10px}
+  .btn.ghost:hover{color:var(--ink)}
+  .hidden{display:none!important}
+
+  .scorehero{font-family:var(--display);font-weight:700;font-size:64px;line-height:1;
+    background:linear-gradient(135deg,#FFD27A,#FF8C5A,#C84B8C);-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;text-align:center}
+  .scoreout{text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;
+    letter-spacing:.1em;text-transform:uppercase;margin-top:4px}
+  .scoretitle{text-align:center;font-size:17px;font-weight:600;color:var(--ink);margin:8px 0 18px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:14px}
+  .pill{background:rgba(139,149,184,.07);border:1px solid var(--line-dim);border-radius:12px;
+    padding:12px 6px;text-align:center}
+  .pill .v{font-size:18px;font-weight:700}
+  .pill .k{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;
+    letter-spacing:.06em;margin-top:3px}
+  .stars-line{display:flex;justify-content:center;gap:5px;font-size:18px;margin:6px 0 4px;flex-wrap:wrap}
+  .shot{text-align:center;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:14px}
+  .who{text-align:center;font-size:18px;font-weight:600;margin-bottom:2px}
+  .who span{color:var(--betelgeuse)}
+
+  @media (max-width:430px){
+    .card h1{font-size:23px}.hud .title b{font-size:16px}.hint{font-size:11px}.scorehero{font-size:54px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bgstar,.star.lit .dot,.star.q::after{animation:none!important}*{transition-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+<div id="sky">
+  <div class="nebula"></div>
+  <svg id="lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+</div>
+
+<div class="hud">
+  <div class="title">Mission Orion<b>BDLC</b></div>
+  <div class="progress">
+    <div><span class="count" id="count">0</span><span style="color:var(--muted);font-size:15px"> / 7</span></div>
+    <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px">Stages lit</div>
+    <div class="pips" id="pips"></div>
+  </div>
+</div>
+
+<div class="hint" id="hint">Tap a glowing star to run that BDLC stage</div>
+
+<!-- Intro -->
+<div class="scrim show" id="introScrim">
+  <div class="card">
+    <div class="eyebrow">Booth Mission · Constellation: Orion</div>
+    <h1>Run a build through its lifecycle.</h1>
+    <p class="lede">Seven stars, seven stages of the BDLC — from discovery to monitoring. Make the right call at each one to ignite its star. Light all seven and the whole of Orion appears across the sky.</p>
+    <div class="field">
+      <label for="nameIn">Explorer name</label>
+      <input id="nameIn" type="text" placeholder="e.g. Ishtel" autocomplete="off" maxlength="28">
+    </div>
+    <div class="field">
+      <label for="teamIn">Department or Team</label>
+      <input id="teamIn" type="text" placeholder="e.g. Product Management" autocomplete="off" maxlength="32">
+    </div>
+    <div class="err" id="introErr"></div>
+    <button class="btn" id="beginBtn">Enter the sky</button>
+  </div>
+</div>
+
+<!-- Challenge -->
+<div class="scrim" id="chalScrim"><div class="card" id="chalCard"></div></div>
+
+<!-- Score -->
+<div class="scrim" id="winScrim"><div class="card" id="winCard"></div></div>
+
+<script>
+/* ---- the seven question stars (Orion's main figure) ---- */
+const STARS = [
+  {id:"betelgeuse", x:39, y:26, s:30, c:"#FF8C5A", tag:"1 · Discovery"},
+  {id:"bellatrix",  x:63, y:22, s:24, c:"#CFE0FF", tag:"2 · Prioritization"},
+  {id:"mintaka",    x:58, y:48, s:18, c:"#BFE3FF", tag:"3 · Planning"},
+  {id:"alnilam",    x:51, y:52, s:20, c:"#DCEBFF", tag:"4 · Build"},
+  {id:"alnitak",    x:44, y:56, s:18, c:"#BFE3FF", tag:"5 · Testing"},
+  {id:"rigel",      x:65, y:81, s:30, c:"#BFE3FF", tag:"6 · Release"},
+  {id:"saiph",      x:41, y:79, s:22, c:"#CFE0FF", tag:"7 · Monitor"},
+];
+/* ---- extra Orion stars (head, club, sword, shield) — light up at the finale ---- */
+const DECO_STARS = [
+  {id:"meissa",  x:51, y:13, s:14, c:"#DCEBFF"},
+  {id:"headL",   x:47, y:11, s:8,  c:"#CFE0FF"},
+  {id:"headR",   x:55, y:11, s:8,  c:"#CFE0FF"},
+  {id:"club1",   x:32, y:16, s:12, c:"#CFE0FF"},
+  {id:"club2",   x:27, y:8,  s:9,  c:"#BFE3FF"},
+  {id:"sword1",  x:50, y:61, s:10, c:"#C9B8FF"},
+  {id:"sword2",  x:50, y:69, s:12, c:"#C9B8FF"},
+  {id:"bow1",    x:75, y:18, s:10, c:"#BFE3FF"},
+  {id:"bow2",    x:78, y:30, s:9,  c:"#BFE3FF"},
+  {id:"bow3",    x:77, y:43, s:9,  c:"#BFE3FF"},
+  {id:"bow4",    x:74, y:55, s:10, c:"#BFE3FF"},
+];
+const EDGES = [  /* the figure that builds as you answer */
+  ["betelgeuse","bellatrix"],["betelgeuse","alnitak"],["bellatrix","mintaka"],
+  ["mintaka","alnilam"],["alnilam","alnitak"],["alnitak","saiph"],["mintaka","rigel"]
+];
+const DECO_EDGES = [ /* connect the extra stars; lit only at the finale */
+  ["meissa","headL"],["meissa","headR"],["meissa","betelgeuse"],["meissa","bellatrix"],
+  ["betelgeuse","club1"],["club1","club2"],
+  ["alnilam","sword1"],["sword1","sword2"],
+  ["bellatrix","bow1"],["bow1","bow2"],["bow2","bow3"],["bow3","bow4"]
+];
+const STAGE_ORDER = ["betelgeuse","bellatrix","mintaka","alnilam","alnitak","rigel","saiph"];
+const TOTAL = STAGE_ORDER.length;
+
+/* ---- stages + plain-language question pools (3 variants each) ---- */
+const STAGES = {
+  betelgeuse:{n:1, name:"Discovery", star:"Betelgeuse", pool:[
+    {prompt:"Sales on your website suddenly dropped this week, but you're not sure why. Your first move?",
+     opts:[{t:"Look at the data to find where customers are dropping off",ok:true},
+           {t:"Redesign the whole site right away",ok:false},
+           {t:"Send a survey to every customer",ok:false},
+           {t:"Add more product photos to the page",ok:false}],
+     why:"Discovery starts with evidence, not a fix. Find where and why customers drop before spending effort."},
+    {prompt:"Customers keep mentioning a confusing step, but no one knows how often it happens. First move?",
+     opts:[{t:"Measure how many people actually hit that step",ok:true},
+           {t:"Rebuild the step from scratch right away",ok:false},
+           {t:"Tell staff to apologize more",ok:false},
+           {t:"Add a 'sorry for the trouble' banner",ok:false}],
+     why:"Quantify the problem before committing time — measure first, build second."},
+    {prompt:"A teammate insists customers 'hate' the new layout. How do you start?",
+     opts:[{t:"Check the actual usage and ask a few real customers",ok:true},
+           {t:"Change it back immediately",ok:false},
+           {t:"Trust the claim and redo everything",ok:false},
+           {t:"Ask 'do you hate it?' in a survey",ok:false}],
+     why:"Start from evidence, not the loudest opinion in the room."},
+  ]},
+  bellatrix:{n:2, name:"Prioritization", star:"Bellatrix", pool:[
+    {prompt:"You can only finish one thing this week. Which comes first?",
+     opts:[{t:"A problem stopping 1 in 10 customers from paying",ok:true},
+           {t:"A small logo color tweak",ok:false},
+           {t:"A nice-to-have dark mode",ok:false},
+           {t:"An internal shortcut for staff",ok:false}],
+     why:"Prioritize by how many people it affects and how much it matters — a payment blocker beats polish."},
+    {prompt:"Four issues are open. Which gets the top slot?",
+     opts:[{t:"A checkout error hitting many paying customers",ok:true},
+           {t:"A slightly misaligned icon",ok:false},
+           {t:"A typo in a help tip",ok:false},
+           {t:"A slow report used twice a month",ok:false}],
+     why:"Biggest impact for the effort wins the slot."},
+    {prompt:"Limited time. Which work creates the most value now?",
+     opts:[{t:"Fixing the signup step where many new users give up",ok:true},
+           {t:"A new font for the homepage",ok:false},
+           {t:"Reordering the menu items",ok:false},
+           {t:"Adding an animation to the logo",ok:false}],
+     why:"Highest impact for the effort wins."},
+  ]},
+  mintaka:{n:3, name:"Planning", star:"Mintaka", pool:[
+    {prompt:"Your main goal this week is to fix the payment problem, and you have a little time left over. What's wise?",
+     opts:[{t:"Add work that helps you confirm the fix actually worked",ok:true},
+           {t:"Cram in lots of unrelated extras",ok:false},
+           {t:"Start a risky big change to fill the time",ok:false},
+           {t:"Pull in next week's biggest task",ok:false}],
+     why:"Plan to the goal, not to fill every hour. Confirming the fix beats over-stuffing the plan."},
+    {prompt:"The goal is the payment fix, and it nearly fills your available time. What's wise?",
+     opts:[{t:"Leave some buffer for surprises the fix may uncover",ok:true},
+           {t:"Squeeze in unrelated features",ok:false},
+           {t:"Add a risky cleanup to fill the gap",ok:false},
+           {t:"Pull in a huge new project",ok:false}],
+     why:"Protect buffer — overloading a plan is how the goal slips."},
+    {prompt:"Your team usually finishes about 25 tasks' worth of work. Leaders want to promise 40 'to be safe.' You…",
+     opts:[{t:"Commit to a realistic amount and protect the main goal",ok:true},
+           {t:"Promise 40 and hope",ok:false},
+           {t:"Plan on unpaid overtime",ok:false},
+           {t:"Skip testing to fit more in",ok:false}],
+     why:"Commit to what's realistic, not wishful."},
+  ]},
+  alnilam:{n:4, name:"Build", star:"Alnilam", pool:[
+    {prompt:"Two important tasks both need the same person this week. As the lead, you…",
+     opts:[{t:"Decide the order and unblock the most important one first",ok:true},
+           {t:"Let the two people sort it out alone",ok:false},
+           {t:"Ask the person to do both at once",ok:false},
+           {t:"Push both to next week",ok:false}],
+     why:"Build is about clearing the path — make conflicts visible and sequence the critical work."},
+    {prompt:"Two groups need the same change before they can finish. As the lead, you…",
+     opts:[{t:"Flag the shared need early and arrange it so neither is stuck",ok:true},
+           {t:"Let both build their own version",ok:false},
+           {t:"Hope it sorts itself out",ok:false},
+           {t:"Delay both for months",ok:false}],
+     why:"Surface shared needs early so no one is blocked."},
+    {prompt:"Halfway through, work stalls because a key decision hasn't been made. You…",
+     opts:[{t:"Get the decision made quickly and keep the rest moving",ok:true},
+           {t:"Let people guess and hope",ok:false},
+           {t:"Stop all work entirely",ok:false},
+           {t:"Wait silently for someone to notice",ok:false}],
+     why:"Unblock fast and keep momentum — surfacing blockers early is the job."},
+  ]},
+  alnitak:{n:5, name:"Testing", star:"Alnitak", pool:[
+    {prompt:"Final checks before launch turn up four issues. Which one must be fixed first?",
+     opts:[{t:"Payment quietly fails for some customers",ok:true},
+           {t:"A typo in the footer year",ok:false},
+           {t:"A button is slightly off-center",ok:false},
+           {t:"A page loads a touch slower",ok:false}],
+     why:"Testing separates must-fix from nice-to-fix. A broken payment is a hard stop; looks can wait."},
+    {prompt:"Pre-launch testing finds four problems. Which is the hard stop?",
+     opts:[{t:"Some customers can't finish signing up",ok:true},
+           {t:"A border color is slightly off",ok:false},
+           {t:"British vs American spelling",ok:false},
+           {t:"A tooltip appears a moment late",ok:false}],
+     why:"A broken core step blocks launch; small cosmetics don't."},
+    {prompt:"Launch is tomorrow. Which finding delays it?",
+     opts:[{t:"Information is sometimes saved to the wrong account",ok:true},
+           {t:"The footer shows last year",ok:false},
+           {t:"A photo is slightly over-compressed",ok:false},
+           {t:"A hover effect is missing on one button",ok:false}],
+     why:"Mistakes with people's data are blockers; visual nitpicks aren't."},
+  ]},
+  rigel:{n:6, name:"Release", star:"Rigel", pool:[
+    {prompt:"It's launch day for a busy site. Best way to release?",
+     opts:[{t:"Release to a small group first, watch how it goes, then expand",ok:true},
+           {t:"Switch everyone at once late on a Friday",ok:false},
+           {t:"Release quietly and tell no one",ok:false},
+           {t:"Wait for a 'perfect' moment that never comes",ok:false}],
+     why:"Release in steps to limit risk — a small rollout with monitoring catches trouble before it hits everyone."},
+    {prompt:"You're launching a big change to a lot of people. Safest approach?",
+     opts:[{t:"Turn it on gradually while watching how it performs",ok:true},
+           {t:"Turn it on for everyone instantly",ok:false},
+           {t:"Launch Friday evening and log off",ok:false},
+           {t:"Skip checking afterward to save time",ok:false}],
+     why:"A gradual rollout with a way to switch it off beats all-at-once."},
+    {prompt:"A new version is ready. How do you launch with less risk?",
+     opts:[{t:"Release to a small share, confirm it's healthy, then grow it",ok:true},
+           {t:"Replace everything instantly to 'rip the band-aid'",ok:false},
+           {t:"Launch with no way to undo it",ok:false},
+           {t:"Tell no one in case it breaks",ok:false}],
+     why:"Step-by-step rollout lets you catch problems before they reach everyone."},
+  ]},
+  saiph:{n:7, name:"Monitor", star:"Saiph", pool:[
+    {prompt:"An hour after launch, errors jump and the site slows down. Your move?",
+     opts:[{t:"Treat it as an incident and switch back to the last working version",ok:true},
+           {t:"Wait a few hours to see if it settles",ok:false},
+           {t:"Post the launch celebration anyway",ok:false},
+           {t:"Turn off the warnings to tidy the dashboard",ok:false}],
+     why:"Monitoring closes the loop. Clear warning signs mean act now — switch back, then investigate."},
+    {prompt:"After launch, far fewer customers are completing checkout than normal. Your move?",
+     opts:[{t:"Treat it as an incident and switch back to the last working version",ok:true},
+           {t:"Wait overnight to see if it recovers",ok:false},
+           {t:"Mute the alert and move on",ok:false},
+           {t:"Celebrate the launch anyway",ok:false}],
+     why:"Clear drops mean act now, then investigate."},
+    {prompt:"A chart shows the site slowly getting worse over a week, with no alarm yet. You…",
+     opts:[{t:"Look into the trend before it becomes an outage",ok:true},
+           {t:"Ignore it until something breaks",ok:false},
+           {t:"Delete the chart",ok:false},
+           {t:"Change the alarm so it stays quiet",ok:false}],
+     why:"Early warning signs are a gift — act on the trend before customers feel it."},
+  ]},
+};
+
+/* scoring */
+const ACC_W=700, SPD_W=300, MIN_T=70, MAX_T=350;
+
+/* ---- render sky ---- */
+const sky=document.getElementById("sky");
+const svg=document.getElementById("lines");
+const ALL_STARS=STARS.concat(DECO_STARS);
+const byId=Object.fromEntries(ALL_STARS.map(s=>[s.id,s]));
+const done=new Set();
+let game=null, startTime=null;
+
+for(let i=0;i<150;i++){
+  const d=document.createElement("div");d.className="bgstar";
+  const sz=Math.random()*2+0.5;
+  d.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*4}s`;
+  sky.appendChild(d);
+}
+EDGES.concat(DECO_EDGES).forEach(([a,b])=>{
+  const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+  l.setAttribute("x1",byId[a].x);l.setAttribute("y1",byId[a].y);
+  l.setAttribute("x2",byId[b].x);l.setAttribute("y2",byId[b].y);
+  l.dataset.a=a;l.dataset.b=b;svg.appendChild(l);
+});
+ALL_STARS.forEach(s=>{
+  const isQ=!!STAGES[s.id];
+  const btn=document.createElement("button");
+  btn.className="star "+(isQ?"q":"deco");btn.dataset.id=s.id;
+  btn.style.cssText=`left:${s.x}%;top:${s.y}%;--s:${s.s}px;--c:${s.c}`;
+  if(isQ){
+    btn.setAttribute("aria-label",`${STAGES[s.id].n}. ${STAGES[s.id].name}`);
+    btn.innerHTML=`<div class="dot"></div><div class="tag">${s.tag}</div>`;
+    btn.addEventListener("click",()=>openChallenge(s.id));
+  }else{
+    btn.setAttribute("aria-hidden","true");
+    btn.innerHTML=`<div class="dot"></div>`;
+  }
+  sky.appendChild(btn);
+});
+
+const pipsEl=document.getElementById("pips");
+STAGE_ORDER.forEach(()=>{const p=document.createElement("div");p.className="pip";pipsEl.appendChild(p)});
+function refreshHud(){
+  document.getElementById("count").textContent=game?game.completed:0;
+  [...pipsEl.children].forEach((p,i)=>p.classList.toggle("on",i<(game?game.completed:0)));
+}
+
+/* ---- build randomized game ---- */
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function newGame(name,team){
+  const g={name,team,completed:0,correct:0,questions:{}};
+  STAGE_ORDER.forEach(key=>{
+    const pool=STAGES[key].pool;
+    const q=pool[Math.floor(Math.random()*pool.length)];
+    g.questions[key]={prompt:q.prompt, why:q.why, opts:shuffle(q.opts)};
+  });
+  return g;
+}
+
+/* ---- challenge ---- */
+const chalScrim=document.getElementById("chalScrim");
+const chalCard=document.getElementById("chalCard");
+function openChallenge(id){
+  if(!game||done.has(id))return;
+  const st=STAGES[id], q=game.questions[id], s=byId[id];
+  chalCard.style.setProperty("--accent",s.c);
+  chalCard.innerHTML=`
+    <div class="eyebrow">Stage ${st.n} · ${st.name} <span style="color:var(--muted)">— ${st.star}</span></div>
+    <p class="prompt">${q.prompt}</p>
+    <div class="opts">${q.opts.map((o,i)=>
+      `<button class="opt" data-ok="${o.ok}"><span class="k">${"ABCD"[i]}</span><span>${o.t}</span></button>`).join("")}</div>
+    <div class="feedback" id="fb"></div>
+    <button class="btn hidden" id="igniteBtn">Ignite ${st.star}</button>`;
+  chalScrim.classList.add("show");
+  const fb=chalCard.querySelector("#fb"), ignite=chalCard.querySelector("#igniteBtn");
+  let answered=false;
+  chalCard.querySelectorAll(".opt").forEach(opt=>{
+    opt.addEventListener("click",()=>{
+      if(answered)return; answered=true;
+      const ok=opt.dataset.ok==="true";
+      if(ok)game.correct++;
+      chalCard.querySelectorAll(".opt").forEach(o=>{o.disabled=true;if(o.dataset.ok==="true")o.classList.add("correct");});
+      if(!ok)opt.classList.add("wrong");
+      fb.innerHTML=(ok?"<b>Right call.</b> ":"<b class='no'>Not quite.</b> ")+q.why;
+      fb.classList.add("show");
+      ignite.classList.remove("hidden");ignite.focus();
+    });
+  });
+  ignite.addEventListener("click",()=>{lightStar(id);chalScrim.classList.remove("show");});
+}
+
+function lightStar(id){
+  done.add(id);
+  document.querySelector(`.star[data-id="${id}"]`).classList.add("lit");
+  svg.querySelectorAll("line").forEach(l=>{if(done.has(l.dataset.a)&&done.has(l.dataset.b))l.classList.add("lit");});
+  game.completed++;
+  refreshHud();
+  document.getElementById("hint").style.opacity=game.completed?0:1;
+  if(game.completed===TOTAL){lightWhole();setTimeout(showScore,1300);}
+}
+
+/* light the ENTIRE constellation — extra stars and all lines */
+function lightWhole(){
+  document.querySelectorAll(".star").forEach(s=>s.classList.add("lit"));
+  svg.querySelectorAll("line").forEach(l=>l.classList.add("lit"));
+  document.body.classList.add("complete");
+}
+
+/* ---- score ---- */
+function title(score){
+  if(score>=900)return "Certified Orion Navigator ⭐";
+  if(score>=750)return "Star Commander";
+  if(score>=600)return "Constellation Builder";
+  if(score>=400)return "Rising Explorer";
+  return "Cadet";
+}
+function showScore(){
+  const elapsed=(Date.now()-startTime)/1000;
+  const accPts=(game.correct/TOTAL)*ACC_W;
+  let f=elapsed<=MIN_T?1:elapsed>=MAX_T?0:(MAX_T-elapsed)/(MAX_T-MIN_T);
+  const spdPts=f*SPD_W, score=Math.round(accPts+spdPts);
+  const m=Math.floor(elapsed/60), sec=Math.floor(elapsed%60);
+  document.getElementById("winCard").innerHTML=`
+    <div class="eyebrow" style="--accent:var(--gold)">Constellation complete · Orion is lit</div>
+    <div class="who">${esc(game.name)} · <span>${esc(game.team)}</span></div>
+    <div class="scorehero">${score}</div>
+    <div class="scoreout">out of 1000</div>
+    <div class="scoretitle">${title(score)}</div>
+    <div class="grid3">
+      <div class="pill"><div class="v">${game.correct}/${TOTAL}</div><div class="k">Correct</div></div>
+      <div class="pill"><div class="v">${Math.round(accPts)}</div><div class="k">Accuracy</div></div>
+      <div class="pill"><div class="v">${Math.round(spdPts)}</div><div class="k">Speed</div></div>
+    </div>
+    <div class="stars-line">${"🌟".repeat(game.correct)}${"✩".repeat(TOTAL-game.correct)}</div>
+    <div class="scoreout">⏱ ${m}m ${sec}s</div>
+    <div class="shot">📸 Screenshot this screen to record your score.</div>
+    <button class="btn ghost" id="againBtn">Run it again</button>`;
+  document.getElementById("winScrim").classList.add("show");
+  document.getElementById("againBtn").addEventListener("click",resetGame);
+}
+function esc(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ---- intro / reset ---- */
+document.getElementById("beginBtn").addEventListener("click",beginMission);
+["nameIn","teamIn"].forEach(id=>document.getElementById(id)
+  .addEventListener("keydown",e=>{if(e.key==="Enter")beginMission();}));
+function beginMission(){
+  const name=document.getElementById("nameIn").value.trim();
+  const team=document.getElementById("teamIn").value.trim();
+  if(!name||!team){document.getElementById("introErr").textContent="Enter your name and department or team to launch.";return;}
+  game=newGame(name,team);startTime=Date.now();refreshHud();
+  document.getElementById("introScrim").classList.remove("show");
+}
+function resetGame(){
+  done.clear();document.body.classList.remove("complete");
+  document.querySelectorAll(".star").forEach(s=>s.classList.remove("lit"));
+  svg.querySelectorAll("line").forEach(l=>l.classList.remove("lit"));
+  document.getElementById("winScrim").classList.remove("show");
+  document.getElementById("introErr").textContent="";
+  document.getElementById("nameIn").value="";document.getElementById("teamIn").value="";
+  game=null;startTime=null;refreshHud();
+  document.getElementById("hint").style.opacity=1;
+  document.getElementById("introScrim").classList.add("show");
+  document.getElementById("nameIn").focus();
+}
+refreshHud();
+</script>
+</body>
+</html>
